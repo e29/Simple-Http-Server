@@ -1,3 +1,10 @@
+/***************************************************************************/
+/* SHS for Simple Http Server. (C) WanE learning 2016
+ *
+ * Usage:
+ *       ./httpd                       */     
+/***************************************************************************/
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -32,9 +39,14 @@ void serve_file(int, const char *);
 int startup(u_short *);
 void unimplemented(int);
 
+/***************************************************************************/
+/* Function declaration: void accept_request(void *arg)
+ * Deal with the HTTP request of socket. */                                                              
+/***************************************************************************/
+
 void accept_request(void *arg)
 {
-    int client = *(int*)arg;
+    int client = *(int*)arg;             // convert to int* first.
     char buf[1024];
     size_t numchars;
     char method[255];
@@ -44,7 +56,7 @@ void accept_request(void *arg)
     struct stat st;
     int cgi = 0;      
 
-    char *query_string = NULL;
+    char* query_string = NULL;
     
     numchars = get_line(client, buf, sizeof(buf));
 
@@ -53,7 +65,6 @@ void accept_request(void *arg)
         write(client,&buf,2);
     }
     
-
     i = 0; j = 0;
 
     while (!ISspace(buf[i]) && (i < sizeof(method) - 1))
@@ -95,11 +106,11 @@ void accept_request(void *arg)
         }
     }
 
-    sprintf(path, "htdocs%s", url);
+    sprintf(path, "httpdocs%s", url);
     if (path[strlen(path) - 1] == '/')
         strcat(path, "index.html");
     if (stat(path, &st) == -1) {
-        while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
+        while ((numchars > 0) && strcmp("\n", buf))   // read & discard headers. All characters < \n.
             numchars = get_line(client, buf, sizeof(buf));
         not_found(client);
     }
@@ -120,6 +131,10 @@ void accept_request(void *arg)
     close(client);
 }
 
+/***************************************************************************/
+/* Function declaration: void bad_request(int client)
+ * 400 bad request. */                                                              
+/***************************************************************************/
 
 void bad_request(int client)
 {
@@ -137,6 +152,10 @@ void bad_request(int client)
     send(client, buf, sizeof(buf), 0);
 }
 
+/***************************************************************************/
+/* Function declaration: void cat(int client, FILE *resource)
+ * Write the file into socket. */                                                              
+/***************************************************************************/
 
 void cat(int client, FILE *resource)
 {
@@ -150,6 +169,10 @@ void cat(int client, FILE *resource)
     }
 }
 
+/***************************************************************************/
+/* Function declaration: void cannot_execute(int client)
+ * 500 internal server error. */                                                              
+/***************************************************************************/
 
 void cannot_execute(int client)
 {
@@ -165,6 +188,10 @@ void cannot_execute(int client)
     send(client, buf, strlen(buf), 0);
 }
 
+/***************************************************************************/
+/* Function declaration: void error_die(const char *sc)
+ * Error function. */                                                              
+/***************************************************************************/
 
 void error_die(const char *sc)
 {
@@ -172,6 +199,11 @@ void error_die(const char *sc)
     exit(1);
 }
 
+/***************************************************************************/
+/* Function declaration: void execute_cgi(int client, const char *path,
+ *                            const char *method, const char *query_string)
+ * Execute the cgi script. */                                                              
+/***************************************************************************/
 
 void execute_cgi(int client, const char *path,
         const char *method, const char *query_string)
@@ -264,6 +296,10 @@ void execute_cgi(int client, const char *path,
     }
 }
 
+/***************************************************************************/
+/* Function declaration: int get_line(int sock, char *buf, int size)
+ * Get one line from socket and change the ending symbol to \n. */                                                              
+/***************************************************************************/
 
 int get_line(int sock, char *buf, int size)
 {
@@ -297,6 +333,10 @@ int get_line(int sock, char *buf, int size)
     return(i);
 }
 
+/***************************************************************************/
+/* Function declaration: void headers(int client, const char *filename)
+ * Write http success head into socket. */                                                              
+/***************************************************************************/
 
 void headers(int client, const char *filename)
 {
@@ -313,6 +353,10 @@ void headers(int client, const char *filename)
     send(client, buf, strlen(buf), 0);
 }
 
+/***************************************************************************/
+/* Function declaration: void not_found(int client)
+ * 404 not found. */                                                              
+/***************************************************************************/
 
 void not_found(int client)
 {
@@ -338,6 +382,10 @@ void not_found(int client)
     send(client, buf, strlen(buf), 0);
 }
 
+/***************************************************************************/
+/* Function declaration: void serve_file(int client, const char *filename)
+ * Deal with static request. */                                                              
+/***************************************************************************/
 
 void serve_file(int client, const char *filename)
 {
@@ -360,25 +408,31 @@ void serve_file(int client, const char *filename)
     fclose(resource);
 }
 
+/***************************************************************************/
+/* Function declaration: int startup(u_short *port)
+ * Create a socket and start listening. */                                                              
+/***************************************************************************/
 
 int startup(u_short *port)
 {
     int httpd = 0;
     struct sockaddr_in name;
 
-    httpd = socket(PF_INET, SOCK_STREAM, 0);
+    httpd = socket(PF_INET, SOCK_STREAM, 0);         // PF for protocols in socket creating.
     if (httpd == -1)
         error_die("socket");
+
     memset(&name, 0, sizeof(name));
-    name.sin_family = AF_INET;
+    name.sin_family = AF_INET;                       // AF for addresses in setting addresses.
     name.sin_port = htons(*port);
     name.sin_addr.s_addr = htonl(INADDR_ANY);
+
     if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0)
         error_die("bind");
     if (*port == 0)  /* if dynamically allocating a port */
     {
         socklen_t namelen = sizeof(name);
-        if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1)
+        if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1)    //if httpd is bound with INADDR_ANY, only connect() or accept() can make the getsockname return.
             error_die("getsockname");
         *port = ntohs(name.sin_port);
     }
@@ -387,6 +441,10 @@ int startup(u_short *port)
     return(httpd);
 }
 
+/***************************************************************************/
+/* Function declaration: void unimplemented(int client)
+ * Unimplemented the GET or POST. */                                                              
+/***************************************************************************/
 
 void unimplemented(int client)
 {
@@ -410,6 +468,10 @@ void unimplemented(int client)
     send(client, buf, strlen(buf), 0);
 }
 
+/***************************************************************************/
+/* Function declaration: int main(void)
+ * Main funcion. */                                                              
+/***************************************************************************/
 
 int main(void)
 {
